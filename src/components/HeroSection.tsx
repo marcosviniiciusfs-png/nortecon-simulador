@@ -15,7 +15,7 @@ const HeroSection = ({ onSimulateClick }: HeroSectionProps) => {
   ];
 
   return (
-    <section className="bg-gradient-to-br from-background via-secondary/30 to-background py-16 md:py-24">
+    <section className="py-16 md:py-24" style={{ backgroundColor: '#a1b6fb' }}>
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           {/* Coluna Esquerda - Texto e CTA */}
