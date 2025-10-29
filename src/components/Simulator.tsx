@@ -298,7 +298,7 @@ const Simulator = () => {
             <p className="text-primary font-semibold text-sm uppercase tracking-wider mb-2">
               SIMULE AGORA
             </p>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-3">
               Responda as perguntas para fazer sua simulação
             </h2>
           </div>
@@ -307,7 +307,7 @@ const Simulator = () => {
             {/* Barra de Progresso */}
             <div className="mb-8">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-primary">{currentStep}%</span>
+                <span className="text-sm font-semibold text-primary">{Math.round(progress)}%</span>
               </div>
               <Progress value={progress} className="h-2" />
             </div>

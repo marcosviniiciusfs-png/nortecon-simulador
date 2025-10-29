@@ -17,9 +17,9 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 15%;
 
-    --primary: 218 89% 41%;
+    --primary: 33 100% 55%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 218 89% 36%;
+    --primary-hover: 33 100% 50%;
 
     --secondary: 220 40% 96%;
     --secondary-foreground: 220 20% 15%;
@@ -27,7 +27,7 @@ All colors MUST be HSL.
     --muted: 220 30% 94%;
     --muted-foreground: 220 15% 45%;
 
-    --accent: 28 100% 55%;
+    --accent: 33 100% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
@@ -35,19 +35,19 @@ All colors MUST be HSL.
 
     --border: 220 20% 88%;
     --input: 220 20% 88%;
-    --ring: 218 89% 41%;
+    --ring: 33 100% 55%;
 
     --radius: 0.75rem;
     
-    --gradient-primary: linear-gradient(135deg, hsl(218 89% 41%), hsl(218 89% 36%));
-    --shadow-card: 0 4px 20px rgba(12, 76, 199, 0.1);
-    --shadow-hover: 0 6px 30px rgba(12, 76, 199, 0.15);
+    --gradient-primary: linear-gradient(135deg, hsl(33 100% 55%), hsl(33 100% 50%));
+    --shadow-card: 0 4px 20px rgba(255, 147, 23, 0.1);
+    --shadow-hover: 0 6px 30px rgba(255, 147, 23, 0.15);
 
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 33 100% 55%;
 
     --sidebar-primary-foreground: 0 0% 98%;
 
@@ -57,7 +57,7 @@ All colors MUST be HSL.
 
     --sidebar-border: 220 13% 91%;
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 33 100% 55%;
   }
 
   .dark {
@@ -70,9 +70,9 @@ All colors MUST be HSL.
     --popover: 218 70% 12%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 218 89% 41%;
+    --primary: 33 100% 55%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 218 89% 46%;
+    --primary-hover: 33 100% 60%;
 
     --secondary: 218 40% 20%;
     --secondary-foreground: 0 0% 95%;
@@ -80,7 +80,7 @@ All colors MUST be HSL.
     --muted: 218 40% 20%;
     --muted-foreground: 0 0% 60%;
 
-    --accent: 28 100% 55%;
+    --accent: 33 100% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 50%;
@@ -88,15 +88,15 @@ All colors MUST be HSL.
 
     --border: 218 30% 25%;
     --input: 218 30% 25%;
-    --ring: 218 89% 41%;
+    --ring: 33 100% 55%;
     --sidebar-background: 218 89% 10%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 218 89% 41%;
+    --sidebar-primary: 33 100% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 218 40% 20%;
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 218 30% 25%;
-    --sidebar-ring: 218 89% 41%;
+    --sidebar-ring: 33 100% 55%;
   }
 }
 

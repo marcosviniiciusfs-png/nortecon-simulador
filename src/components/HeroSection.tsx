@@ -26,7 +26,7 @@ const HeroSection = ({ onSimulateClick }: HeroSectionProps) => {
               </p>
             </div>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-primary">
               Simule agora o seu crédito ideal para conquistar o seu sonho
             </h1>
 
