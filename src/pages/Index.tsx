@@ -19,7 +19,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main>
+      <main className="pt-16 md:pt-20">
         <HeroSection onSimulateClick={scrollToSimulator} />
         <Simulator />
         <BenefitsSection />

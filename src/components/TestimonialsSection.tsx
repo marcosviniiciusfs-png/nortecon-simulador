@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
 
@@ -13,28 +13,60 @@ const TestimonialsSection = () => {
   const videos = ["/videos/1_1.mp4", "/videos/3_1.mp4", "/videos/Design_sem_nome.mp4"];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mutedStates, setMutedStates] = useState<boolean[]>(videos.map(() => true));
+  const [loadedVideos, setLoadedVideos] = useState<Set<number>>(new Set([0]));
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
   const toggleMute = (index: number) => {
     setMutedStates((prev) => {
-      const newStates = prev.map(() => true); // Mute all videos
-      newStates[index % videos.length] = !prev[index % videos.length]; // Toggle clicked video
+      const newStates = prev.map(() => true);
+      newStates[index % videos.length] = !prev[index % videos.length];
       return newStates;
     });
   };
 
+  // Intersection Observer para lazy loading da seção
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Pré-carregar próximo vídeo
+  useEffect(() => {
+    if (isVisible) {
+      const nextIndex = (currentIndex + 1) % videos.length;
+      setLoadedVideos(prev => new Set([...prev, currentIndex, nextIndex]));
+    }
+  }, [currentIndex, isVisible, videos.length]);
+
   // Auto-scroll carousel
   useEffect(() => {
+    if (!isVisible) return;
+    
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % videos.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [videos.length]);
+  }, [videos.length, isVisible]);
 
   // Duplicate videos for seamless loop
   const displayVideos = [...videos, ...videos, ...videos];
 
   return (
-    <section className="py-16 md:py-20 bg-secondary/20">
+    <section ref={sectionRef} className="py-16 md:py-20 bg-secondary/20">
       <div className="container mx-auto px-4">
         {/* Título e CTA */}
         <div className="text-center mb-12 max-w-3xl mx-auto">
@@ -64,16 +96,23 @@ const TestimonialsSection = () => {
             {displayVideos.map((video, index) => (
               <div
                 key={index}
-                className="relative flex-shrink-0 w-80 h-[500px] rounded-2xl overflow-hidden shadow-lg"
+                className="relative flex-shrink-0 w-80 h-[500px] rounded-2xl overflow-hidden shadow-lg bg-muted"
               >
-                <video
-                  src={video}
-                  autoPlay
-                  muted={mutedStates[index % videos.length]}
-                  loop
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
+                {isVisible && loadedVideos.has(index % videos.length) ? (
+                  <video
+                    src={video}
+                    autoPlay
+                    muted={mutedStates[index % videos.length]}
+                    loop
+                    playsInline
+                    preload="metadata"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
                 <button
                   onClick={() => toggleMute(index)}
                   className="absolute bottom-4 right-4 z-10 bg-black/60 hover:bg-black/80 text-white p-3 rounded-full shadow-lg transition-all hover:scale-110"
