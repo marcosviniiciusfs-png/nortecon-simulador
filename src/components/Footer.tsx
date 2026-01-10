@@ -1,4 +1,5 @@
 import { Phone, MapPin } from "lucide-react";
+import logoMultimarcas from "@/assets/logo-multimarcas.png";
 
 const Footer = () => {
   return (
@@ -7,6 +8,7 @@ const Footer = () => {
         <div className="grid md:grid-cols-3 gap-8 mb-8">
           {/* Logo e Social */}
           <div>
+            <img src={logoMultimarcas} alt="Multimarcas" className="h-12 w-auto mb-4" />
             <h3 className="text-xl font-bold mb-4">Social</h3>
             <div className="flex gap-4">
               <a
