@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
 
@@ -13,10 +13,11 @@ const TestimonialsSection = () => {
   const videos = ["/videos/1_1.mp4", "/videos/3_1.mp4", "/videos/Design_sem_nome.mp4"];
   const [activeAudioIndex, setActiveAudioIndex] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [loadingStates, setLoadingStates] = useState<boolean[]>([true, true, true]);
   const sectionRef = useRef<HTMLElement>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   const handleVideoClick = (index: number) => {
-    // Ao clicar no vídeo, ativa o áudio dele (ou desativa se já estiver ativo)
     if (activeAudioIndex === index) {
       setActiveAudioIndex(null);
     } else {
@@ -29,6 +30,37 @@ const TestimonialsSection = () => {
     handleVideoClick(index);
   };
 
+  const handleVideoLoaded = useCallback((index: number) => {
+    setLoadingStates(prev => {
+      const newStates = [...prev];
+      newStates[index] = false;
+      return newStates;
+    });
+  }, []);
+
+  // Forçar autoplay quando os vídeos ficarem visíveis (especialmente para mobile)
+  useEffect(() => {
+    if (isVisible) {
+      videoRefs.current.forEach((video) => {
+        if (video) {
+          video.muted = true;
+          video.play().catch(() => {
+            // Fallback silencioso se o autoplay falhar
+          });
+        }
+      });
+    }
+  }, [isVisible]);
+
+  // Controlar mute/unmute quando o usuário clica
+  useEffect(() => {
+    videoRefs.current.forEach((video, index) => {
+      if (video) {
+        video.muted = activeAudioIndex !== index;
+      }
+    });
+  }, [activeAudioIndex]);
+
   // Intersection Observer para lazy loading da seção
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -38,7 +70,7 @@ const TestimonialsSection = () => {
           observer.disconnect();
         }
       },
-      { rootMargin: "200px" }
+      { rootMargin: "100px" }
     );
 
     if (sectionRef.current) {
@@ -81,15 +113,27 @@ const TestimonialsSection = () => {
               }`}
             >
               {isVisible ? (
-                <video
-                  src={video}
-                  autoPlay
-                  muted={activeAudioIndex !== index}
-                  loop
-                  playsInline
-                  preload="metadata"
-                  className="w-full h-[400px] md:h-[500px] object-cover"
-                />
+                <>
+                  <video
+                    ref={(el) => { videoRefs.current[index] = el; }}
+                    src={video}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    // @ts-ignore - webkit-playsinline é necessário para iOS
+                    webkit-playsinline="true"
+                    preload="auto"
+                    onCanPlay={() => handleVideoLoaded(index)}
+                    onLoadedData={() => handleVideoLoaded(index)}
+                    className="w-full h-[400px] md:h-[500px] object-cover"
+                  />
+                  {loadingStates[index] && (
+                    <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="w-full h-[400px] md:h-[500px] bg-muted flex items-center justify-center">
                   <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
