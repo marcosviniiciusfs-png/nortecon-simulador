@@ -15,7 +15,7 @@ const Header = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a8a66] shadow-md">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#dfdfdf] shadow-md">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <img src={logo} alt="Grupo Nortecon" className="h-14 w-auto" />
@@ -25,25 +25,25 @@ const Header = () => {
         <nav className="hidden md:flex items-center gap-6">
           <button
             onClick={() => scrollToSection("inicio")}
-            className="text-white hover:text-white/80 transition-colors font-medium"
+            className="text-gray-700 hover:text-gray-900 transition-colors font-medium"
           >
             Início
           </button>
           <button
             onClick={() => scrollToSection("simulador")}
-            className="text-white hover:text-white/80 transition-colors font-medium"
+            className="text-gray-700 hover:text-gray-900 transition-colors font-medium"
           >
             Simulador
           </button>
           <button
             onClick={() => scrollToSection("beneficios")}
-            className="text-white hover:text-white/80 transition-colors font-medium"
+            className="text-gray-700 hover:text-gray-900 transition-colors font-medium"
           >
             Benefícios
           </button>
           <button
             onClick={() => scrollToSection("contato")}
-            className="text-white hover:text-white/80 transition-colors font-medium"
+            className="text-gray-700 hover:text-gray-900 transition-colors font-medium"
           >
             Contato
           </button>
@@ -53,7 +53,7 @@ const Header = () => {
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden text-white hover:bg-white/10"
+          className="md:hidden text-gray-700 hover:bg-gray-300/50"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -62,29 +62,29 @@ const Header = () => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-[#1a8a66] border-t border-white/20">
+        <div className="md:hidden bg-[#dfdfdf] border-t border-gray-300">
           <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
             <button
               onClick={() => scrollToSection("inicio")}
-              className="text-white hover:text-white/80 transition-colors text-left py-2 font-medium"
+              className="text-gray-700 hover:text-gray-900 transition-colors text-left py-2 font-medium"
             >
               Início
             </button>
             <button
               onClick={() => scrollToSection("simulador")}
-              className="text-white hover:text-white/80 transition-colors text-left py-2 font-medium"
+              className="text-gray-700 hover:text-gray-900 transition-colors text-left py-2 font-medium"
             >
               Simulador
             </button>
             <button
               onClick={() => scrollToSection("beneficios")}
-              className="text-white hover:text-white/80 transition-colors text-left py-2 font-medium"
+              className="text-gray-700 hover:text-gray-900 transition-colors text-left py-2 font-medium"
             >
               Benefícios
             </button>
             <button
               onClick={() => scrollToSection("contato")}
-              className="text-white hover:text-white/80 transition-colors text-left py-2 font-medium"
+              className="text-gray-700 hover:text-gray-900 transition-colors text-left py-2 font-medium"
             >
               Contato
             </button>
