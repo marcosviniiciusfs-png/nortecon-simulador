@@ -120,23 +120,15 @@ const Simulator = () => {
         }),
       });
 
-      if (response.ok) {
-        setFormData({
-          propertyType: "",
-          creditAmount: "",
-          hasDownPayment: "",
-          downPaymentAmount: "",
-          monthlyPayment: "",
-          city: "",
-          fullName: "",
-          whatsapp: "",
-        });
-        setCurrentStep(1);
+      // Redirecionar se o status for 2xx ou 3xx (webhook pode ter comportamentos variados)
+      if (response.status >= 200 && response.status < 400) {
         navigate("/obrigado");
       } else {
+        console.error("Erro na resposta:", response.status, response.statusText);
         throw new Error("Erro ao enviar simulação");
       }
     } catch (error) {
+      console.error("Erro na submissão:", error);
       toast({
         title: "Erro ao enviar simulação",
         description: "Por favor, tente novamente.",

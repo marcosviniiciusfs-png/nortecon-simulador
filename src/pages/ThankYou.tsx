@@ -10,8 +10,10 @@ const ThankYou = () => {
 
   useEffect(() => {
     // Track Meta Pixel Lead event on thank you page
-    if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'Lead');
+    const fbq = (window as any).fbq;
+    if (typeof fbq === 'function') {
+      fbq('track', 'Lead');
+      console.log('Meta Pixel Lead event tracked');
     }
   }, []);
 
