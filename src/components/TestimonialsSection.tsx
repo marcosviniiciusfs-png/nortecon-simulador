@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react";
 
 const TestimonialsSection = () => {
   const scrollToSimulator = () => {
@@ -12,17 +12,48 @@ const TestimonialsSection = () => {
 
   const videos = ["/videos/1_1.mp4", "/videos/3_1.mp4", "/videos/Design_sem_nome.mp4"];
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [mutedStates, setMutedStates] = useState<boolean[]>(videos.map(() => true));
-  const [loadedVideos, setLoadedVideos] = useState<Set<number>>(new Set([0]));
+  const [activeAudioIndex, setActiveAudioIndex] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
+  const pauseTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const handleInteraction = () => {
+    setIsPaused(true);
+    
+    // Retomar auto-scroll após 10 segundos
+    if (pauseTimeoutRef.current) {
+      clearTimeout(pauseTimeoutRef.current);
+    }
+    pauseTimeoutRef.current = setTimeout(() => {
+      setIsPaused(false);
+    }, 10000);
+  };
 
   const toggleMute = (index: number) => {
-    setMutedStates((prev) => {
-      const newStates = prev.map(() => true);
-      newStates[index % videos.length] = !prev[index % videos.length];
-      return newStates;
-    });
+    handleInteraction();
+    setCurrentIndex(index);
+    
+    if (activeAudioIndex === index) {
+      setActiveAudioIndex(null);
+    } else {
+      setActiveAudioIndex(index);
+    }
+  };
+
+  const handleNavigation = (direction: 'prev' | 'next') => {
+    handleInteraction();
+    
+    if (direction === 'prev') {
+      setCurrentIndex((prev) => (prev - 1 + videos.length) % videos.length);
+    } else {
+      setCurrentIndex((prev) => (prev + 1) % videos.length);
+    }
+  };
+
+  const handleDotClick = (index: number) => {
+    handleInteraction();
+    setCurrentIndex(index);
   };
 
   // Intersection Observer para lazy loading da seção
@@ -44,26 +75,24 @@ const TestimonialsSection = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Pré-carregar próximo vídeo
+  // Auto-scroll carousel (apenas se não estiver pausado)
   useEffect(() => {
-    if (isVisible) {
-      const nextIndex = (currentIndex + 1) % videos.length;
-      setLoadedVideos(prev => new Set([...prev, currentIndex, nextIndex]));
-    }
-  }, [currentIndex, isVisible, videos.length]);
-
-  // Auto-scroll carousel
-  useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible || isPaused) return;
     
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % videos.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [videos.length, isVisible]);
+  }, [videos.length, isVisible, isPaused]);
 
-  // Duplicate videos for seamless loop
-  const displayVideos = [...videos, ...videos, ...videos];
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (pauseTimeoutRef.current) {
+        clearTimeout(pauseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <section ref={sectionRef} className="py-16 md:py-20 bg-secondary/20">
@@ -86,43 +115,64 @@ const TestimonialsSection = () => {
         </div>
 
         {/* Carrossel de Vídeos */}
-        <div className="relative overflow-hidden mt-16">
-          <div
-            className="flex gap-6 transition-transform duration-1000 ease-linear"
-            style={{
-              transform: `translateX(-${currentIndex * (320 + 24)}px)`,
-            }}
+        <div className="relative mt-16 max-w-md mx-auto">
+          {/* Botão Anterior */}
+          <button
+            onClick={() => handleNavigation('prev')}
+            className="absolute left-0 md:-left-16 top-1/2 -translate-y-1/2 z-10 bg-black/60 hover:bg-black/80 text-white p-3 rounded-full shadow-lg transition-all hover:scale-110"
+            aria-label="Vídeo anterior"
           >
-            {displayVideos.map((video, index) => (
-              <div
-                key={index}
-                className="relative flex-shrink-0 w-80 h-[500px] rounded-2xl overflow-hidden shadow-lg bg-muted"
-              >
-                {isVisible && loadedVideos.has(index % videos.length) ? (
-                  <video
-                    src={video}
-                    autoPlay
-                    muted={mutedStates[index % videos.length]}
-                    loop
-                    playsInline
-                    preload="metadata"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-                <button
-                  onClick={() => toggleMute(index)}
-                  className="absolute bottom-4 right-4 z-10 bg-black/60 hover:bg-black/80 text-white p-3 rounded-full shadow-lg transition-all hover:scale-110"
-                  aria-label={mutedStates[index % videos.length] ? "Ativar som" : "Desativar som"}
+            <ChevronLeft size={24} />
+          </button>
+
+          {/* Container do Vídeo */}
+          <div className="overflow-hidden rounded-2xl shadow-xl">
+            <div
+              className="flex transition-transform duration-500 ease-out"
+              style={{
+                transform: `translateX(-${currentIndex * 100}%)`,
+              }}
+            >
+              {videos.map((video, index) => (
+                <div
+                  key={index}
+                  className="relative flex-shrink-0 w-full h-[500px] md:h-[600px] bg-muted"
                 >
-                  {mutedStates[index % videos.length] ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                </button>
-              </div>
-            ))}
+                  {isVisible ? (
+                    <video
+                      src={video}
+                      autoPlay
+                      muted={activeAudioIndex !== index}
+                      loop
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => toggleMute(index)}
+                    className="absolute bottom-4 right-4 z-10 bg-black/60 hover:bg-black/80 text-white p-3 rounded-full shadow-lg transition-all hover:scale-110"
+                    aria-label={activeAudioIndex === index ? "Desativar som" : "Ativar som"}
+                  >
+                    {activeAudioIndex === index ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* Botão Próximo */}
+          <button
+            onClick={() => handleNavigation('next')}
+            className="absolute right-0 md:-right-16 top-1/2 -translate-y-1/2 z-10 bg-black/60 hover:bg-black/80 text-white p-3 rounded-full shadow-lg transition-all hover:scale-110"
+            aria-label="Próximo vídeo"
+          >
+            <ChevronRight size={24} />
+          </button>
         </div>
 
         {/* Indicadores de pontos */}
@@ -130,9 +180,9 @@ const TestimonialsSection = () => {
           {videos.map((_, index) => (
             <button
               key={index}
-              onClick={() => setCurrentIndex(index)}
+              onClick={() => handleDotClick(index)}
               className={`w-2 h-2 rounded-full transition-all ${
-                index === currentIndex % videos.length
+                index === currentIndex
                   ? "bg-primary w-8"
                   : "bg-border hover:bg-primary/50"
               }`}
@@ -140,6 +190,13 @@ const TestimonialsSection = () => {
             />
           ))}
         </div>
+
+        {/* Indicador de pausa */}
+        {isPaused && (
+          <p className="text-center text-sm text-muted-foreground mt-4">
+            Carrossel pausado • Retoma automaticamente em breve
+          </p>
+        )}
       </div>
     </section>
   );
