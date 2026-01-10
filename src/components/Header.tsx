@@ -16,9 +16,9 @@ const Header = () => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a8a66] shadow-md">
-      <div className="container mx-auto px-4 py-2 flex items-center justify-between">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img src={logo} alt="Grupo Nortecon" className="h-10 w-auto" />
+          <img src={logo} alt="Grupo Nortecon" className="h-14 w-auto" />
         </div>
 
         {/* Desktop Menu */}
