@@ -101,7 +101,7 @@ const Simulator = () => {
 
   const handleFinish = async () => {
     try {
-      const response = await fetch("https://hook.us1.make.com/qfpun8ji7renj2pefmbgopra9tan9bg1", {
+      const response = await fetch("https://hook.us1.make.com/hulv8g98ap8d9fm7q6rq11lmgr3epqw6", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
