@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import cliente1 from "@/assets/cliente-1.png";
-import cliente2 from "@/assets/cliente-2.png";
-import cliente3 from "@/assets/cliente-3.png";
-import cliente4 from "@/assets/cliente-4.png";
-import cliente5 from "@/assets/cliente-5.png";
-import cliente6 from "@/assets/cliente-6.png";
 
 const TestimonialsSection = () => {
   const scrollToSimulator = () => {
@@ -15,19 +9,19 @@ const TestimonialsSection = () => {
     }
   };
 
-  const images = [cliente1, cliente2, cliente3, cliente4, cliente5, cliente6];
+  const videos = ["/videos/1_1.mp4", "/videos/3_1.mp4"];
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Auto-scroll carousel
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % images.length);
-    }, 3000);
+      setCurrentIndex((prev) => (prev + 1) % videos.length);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [images.length]);
+  }, [videos.length]);
 
-  // Duplicate images for seamless loop
-  const displayImages = [...images, ...images, ...images];
+  // Duplicate videos for seamless loop
+  const displayVideos = [...videos, ...videos, ...videos];
 
   return (
     <section className="py-16 md:py-20 bg-secondary/20">
@@ -49,7 +43,7 @@ const TestimonialsSection = () => {
           </Button>
         </div>
 
-        {/* Carrossel de Clientes */}
+        {/* Carrossel de Vídeos */}
         <div className="relative overflow-hidden mt-16">
           <div
             className="flex gap-6 transition-transform duration-1000 ease-linear"
@@ -57,14 +51,17 @@ const TestimonialsSection = () => {
               transform: `translateX(-${currentIndex * (320 + 24)}px)`,
             }}
           >
-            {displayImages.map((image, index) => (
+            {displayVideos.map((video, index) => (
               <div
                 key={index}
                 className="flex-shrink-0 w-80 h-[500px] rounded-2xl overflow-hidden shadow-lg"
               >
-                <img
-                  src={image}
-                  alt={`Cliente contemplado ${(index % images.length) + 1}`}
+                <video
+                  src={video}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -74,12 +71,12 @@ const TestimonialsSection = () => {
 
         {/* Indicadores de pontos */}
         <div className="flex justify-center gap-2 mt-8">
-          {images.map((_, index) => (
+          {videos.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentIndex(index)}
               className={`w-2 h-2 rounded-full transition-all ${
-                index === currentIndex % images.length
+                index === currentIndex % videos.length
                   ? "bg-primary w-8"
                   : "bg-border hover:bg-primary/50"
               }`}
