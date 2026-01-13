@@ -27,6 +27,7 @@ interface SimulatorData {
 
 const Simulator = () => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<SimulatorData>({
@@ -102,6 +103,10 @@ const Simulator = () => {
   };
 
   const handleFinish = async () => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
     try {
       const response = await fetch("https://hook.us1.make.com/hulv8g98ap8d9fm7q6rq11lmgr3epqw6", {
         method: "POST",
@@ -120,7 +125,6 @@ const Simulator = () => {
         }),
       });
 
-      // Redirecionar se o status for 2xx ou 3xx (webhook pode ter comportamentos variados)
       if (response.status >= 200 && response.status < 400) {
         navigate("/obrigado");
       } else {
@@ -134,6 +138,7 @@ const Simulator = () => {
         description: "Por favor, tente novamente.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
     }
   };
 
@@ -335,10 +340,10 @@ const Simulator = () => {
               ) : (
                 <Button
                   onClick={handleFinish}
-                  disabled={!canProceed()}
+                  disabled={!canProceed() || isSubmitting}
                   className="flex-1 py-6 text-base"
                 >
-                  Finalizar
+                  {isSubmitting ? "Enviando..." : "Finalizar"}
                 </Button>
               )}
             </div>
