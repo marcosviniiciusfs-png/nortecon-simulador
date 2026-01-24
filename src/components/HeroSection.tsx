@@ -11,7 +11,6 @@ const HeroSection = ({ onSimulateClick }: HeroSectionProps) => {
     "100% Gratuito",
     "Sem consulta ao SPC",
     "Resultado no seu WhatsApp",
-    "Lojas em paraquedas e Canais dos carrajás",
   ];
 
   return (
