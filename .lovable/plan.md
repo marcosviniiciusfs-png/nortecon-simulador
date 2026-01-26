@@ -1,107 +1,145 @@
 
-# Plano: Corrigir Erro de DNS na Edge Function
+# Plano: Acelerar o Envio do Formulário
 
-## Problema Identificado
+## Análise do Fluxo Atual
 
-O erro **`net::ERR_NAME_NOT_RESOLVED`** indica que o navegador não consegue resolver o domínio `43ecbb0e-055a-404a-920e-866debe2c8d3.supabase.co`. 
+Quando o usuário clica em "Finalizar", o seguinte acontece **sequencialmente**:
 
-**Por que isso acontece:**
-O ID `43ecbb0e-055a-404a-920e-866debe2c8d3` é o **ID do projeto Lovable**, não um ID de projeto Supabase real. Em projetos Lovable Cloud:
-- O backend Supabase é gerenciado internamente pela Lovable
-- O provisionamento completo (Database, Users, Storage, Edge Functions) é **sob demanda** - só acontece quando você pede funcionalidades que precisam disso
-- Como o usuário confirmou que só vê "permissões/sem recursos" na aba Cloud, **o backend ainda não foi totalmente provisionado**
-- Por isso, a URL `.supabase.co` simplesmente não existe ainda
+1. `setIsSubmitting(true)` - Desabilita o botão
+2. Monta o payload com os dados
+3. `await fetch()` - Envia para Edge Function (espera resposta)
+4. Edge Function envia para Convex CRM (espera resposta)
+5. `await response.json()` - Lê a resposta
+6. `navigate("/obrigado")` - Redireciona
 
-## Solução Proposta
-
-Há **duas opções** para resolver:
+**Problema:** O usuário fica esperando **toda a cadeia** (Frontend → Edge Function → CRM → resposta) antes de ver a página de obrigado.
 
 ---
 
-### Opção A: Provisionar o Backend Lovable Cloud (Recomendada)
+## Estratégias de Otimização
 
-Forçar o provisionamento completo do backend pedindo para criar um recurso de database. Depois disso, as Edge Functions passarão a funcionar.
+### 1. Navegação Otimista (Impacto Alto)
+Redirecionar imediatamente para `/obrigado` sem esperar a resposta da API.
 
-**Passos:**
-1. Pedir ao Lovable para "criar uma tabela de teste no database" (ex: `leads`)
-2. Isso vai disparar o provisionamento completo do Supabase
-3. Após provisionado, as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` serão injetadas automaticamente
-4. Atualizar o código para usar o cliente Supabase novamente (`supabase.functions.invoke`)
-
-**Vantagens:**
-- Solução definitiva
-- Edge Function funciona com toda a segurança
-- Token do CRM fica protegido no servidor
-
----
-
-### Opção B: Fallback Temporário para Webhook Direto
-
-Enquanto o backend não está provisionado, enviar dados diretamente para o webhook do Convex CRM a partir do frontend.
-
-**Mudanças no código:**
-
+**Antes:**
 ```typescript
-// src/components/Simulator.tsx - handleFinish
-const response = await fetch(
-  'https://app.convexcrm.com.br/api/webhooks/integrations/59fbcefca35e40b8a1a11a8005239d50',
-  {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer SEU_TOKEN_AQUI' // Token exposto no frontend
-    },
-    body: JSON.stringify(payload),
-  }
-);
+const response = await fetch(...);
+const data = await response.json();
+navigate("/obrigado");
 ```
 
-**Desvantagens:**
-- O token do CRM ficaria exposto no código frontend (menos seguro)
-- Qualquer pessoa poderia ver o token no código-fonte
+**Depois:**
+```typescript
+// Navega primeiro (experiência instantânea)
+navigate("/obrigado");
+
+// Envia em background (fire-and-forget)
+fetch(...).catch(console.error);
+```
+
+### 2. Usar `navigator.sendBeacon` (Impacto Médio)
+API otimizada para envio de dados ao sair da página - não bloqueia navegação.
+
+```typescript
+navigator.sendBeacon(
+  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-to-crm`,
+  JSON.stringify(payload)
+);
+navigate("/obrigado");
+```
+
+### 3. Remover Leitura Desnecessária da Resposta (Impacto Baixo)
+O código atual faz `await response.json()` mas não usa o resultado. Remover isso economiza tempo.
 
 ---
 
-## Recomendação
+## Solução Recomendada
 
-**Opção A** é a recomendada. Basta enviar uma mensagem pedindo:
+Combinar **Navegação Otimista** com **Fire-and-Forget** usando fetch normal (sendBeacon tem limitações com headers customizados).
 
-> "Crie uma tabela chamada `leads` no database com os campos: nome (text), whatsapp (text), tipo (text), valor_credito (text), cidade (text), criado_em (timestamp)"
+### Mudanças no `handleFinish`:
 
-Isso vai:
-1. Provisionar completamente o backend Lovable Cloud
-2. Ativar as Edge Functions
-3. Fazer a URL `.supabase.co` funcionar corretamente
+```typescript
+const handleFinish = async () => {
+  if (isSubmitting) return;
+  
+  setIsSubmitting(true);
+  
+  const payload = {
+    nome: formData.fullName,
+    nome_completo: formData.fullName,
+    telefone: formData.whatsapp,
+    whatsapp: formData.whatsapp,
+    tipo: formData.propertyType,
+    valor_do_credito: formData.creditAmount,
+    valor_de_entrada: formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
+    cidade: formData.city,
+    parcela_ideal: formData.monthlyPayment,
+    data_entrada: new Date().toISOString().split('T')[0],
+  };
 
-Após o provisionamento, podemos ajustar o código para usar a forma correta de chamar a Edge Function.
+  // Navega IMEDIATAMENTE para página de obrigado
+  navigate("/obrigado");
+
+  // Envia em background (fire-and-forget)
+  fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-to-crm`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true, // Garante que o fetch continue mesmo após navegação
+    }
+  ).catch((error) => {
+    console.error("Erro ao enviar lead:", error);
+  });
+};
+```
 
 ---
 
-## Arquivos que Serão Afetados (após provisionar)
+## Benefícios
+
+| Aspecto | Antes | Depois |
+|---------|-------|--------|
+| Tempo até redirecionamento | 2-5 segundos | Instantâneo |
+| Experiência do usuário | Aguarda "Enviando..." | Imediato |
+| Dados são enviados? | Sim | Sim (em background) |
+| Risco | Nenhum | Mínimo (se falhar, usuário não vê erro) |
+
+---
+
+## Fluxo Otimizado
+
+```text
+Usuário clica "Finalizar"
+        │
+        ├──→ [IMEDIATO] navigate("/obrigado")
+        │         ↓
+        │    Usuário vê página de sucesso
+        │
+        └──→ [BACKGROUND] fetch() → Edge Function → CRM
+                    (não bloqueia navegação)
+```
+
+---
+
+## Considerações
+
+- **keepalive: true**: Garante que a requisição continue mesmo que o componente desmonte
+- **Sem tratamento de erro para usuário**: Se falhar, o lead não será registrado mas o usuário não verá erro. Isso é aceitável para landing pages de conversão onde a velocidade é prioridade
+- **Meta Pixel**: O evento de Lead continua funcionando na página ThankYou
+
+---
+
+## Arquivos Afetados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/Simulator.tsx` | Voltar a usar `supabase.functions.invoke()` |
-| `src/integrations/supabase/client.ts` | Remover fallbacks de string vazia |
+| `src/components/Simulator.tsx` | Refatorar `handleFinish` para navegação otimista |
 
 ---
 
-## Fluxo Final Esperado
+## Detalhes Técnicos
 
-```text
-+----------------+     +---------------------------+     +-------------+
-| Simulator      | --> | Edge Function             | --> | Convex CRM  |
-| (Frontend)     |     | send-to-crm               |     | Webhook     |
-+----------------+     +---------------------------+     +-------------+
-       |                        |                              |
-       | supabase.functions     | POST + Bearer Token          |
-       | .invoke()              | (CONVEX_CRM_TOKEN seguro)    |
-       v                        v                              v
-   Dados do form         Processa + Envia              Cria lead no CRM
-```
-
----
-
-## Próximo Passo Imediato
-
-Aprovar este plano e, na próxima mensagem, pedir para **"criar uma tabela leads no database"** para disparar o provisionamento completo do Lovable Cloud.
+A opção `keepalive: true` no fetch é crucial. Sem ela, quando o React navega para `/obrigado`, o componente Simulator desmonta e o fetch poderia ser cancelado. Com `keepalive`, o navegador mantém a conexão ativa mesmo após a navegação.
