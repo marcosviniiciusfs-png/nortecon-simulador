@@ -122,7 +122,7 @@ const Simulator = () => {
       };
 
       const response = await fetch(
-        'https://43ecbb0e-055a-404a-920e-866debe2c8d3.supabase.co/functions/v1/send-to-crm',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-to-crm`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
