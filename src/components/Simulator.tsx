@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { AlertCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
   SelectContent,
@@ -108,29 +109,29 @@ const Simulator = () => {
     setIsSubmitting(true);
     
     try {
-      const response = await fetch("https://hook.us1.make.com/hulv8g98ap8d9fm7q6rq11lmgr3epqw6", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          "Data de Entrada": new Date().toISOString().split('T')[0],
-          "Nome Completo": formData.fullName,
-          "WhatsApp": formData.whatsapp,
-          "Tipo de Bem": formData.propertyType,
-          "Valor Pretendido (R$)": formData.creditAmount,
-          "Valor de Entrada (R$)": formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
-          "Parcela Ideal (R$)": formData.monthlyPayment,
-          "Cidade": formData.city,
-        }),
+      const payload = {
+        nome: formData.fullName,
+        nome_completo: formData.fullName,
+        telefone: formData.whatsapp,
+        whatsapp: formData.whatsapp,
+        tipo: formData.propertyType,
+        valor_do_credito: formData.creditAmount,
+        valor_de_entrada: formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
+        cidade: formData.city,
+        parcela_ideal: formData.monthlyPayment,
+        data_entrada: new Date().toISOString().split('T')[0],
+      };
+
+      const { data, error } = await supabase.functions.invoke('send-to-crm', {
+        body: payload,
       });
 
-      if (response.status >= 200 && response.status < 400) {
-        navigate("/obrigado");
-      } else {
-        console.error("Erro na resposta:", response.status, response.statusText);
+      if (error) {
+        console.error("Erro na resposta:", error);
         throw new Error("Erro ao enviar simulação");
       }
+
+      navigate("/obrigado");
     } catch (error) {
       console.error("Erro na submissão:", error);
       toast({

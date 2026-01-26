@@ -1,0 +1,2 @@
+[functions.send-to-crm]
+verify_jwt = false
