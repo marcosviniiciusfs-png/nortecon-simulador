@@ -102,52 +102,39 @@ const Simulator = () => {
     setCurrentStep(currentStep - 1);
   };
 
-  const handleFinish = async () => {
+  const handleFinish = () => {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
     
-    try {
-      const payload = {
-        nome: formData.fullName,
-        nome_completo: formData.fullName,
-        telefone: formData.whatsapp,
-        whatsapp: formData.whatsapp,
-        tipo: formData.propertyType,
-        valor_do_credito: formData.creditAmount,
-        valor_de_entrada: formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
-        cidade: formData.city,
-        parcela_ideal: formData.monthlyPayment,
-        data_entrada: new Date().toISOString().split('T')[0],
-      };
+    const payload = {
+      nome: formData.fullName,
+      nome_completo: formData.fullName,
+      telefone: formData.whatsapp,
+      whatsapp: formData.whatsapp,
+      tipo: formData.propertyType,
+      valor_do_credito: formData.creditAmount,
+      valor_de_entrada: formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
+      cidade: formData.city,
+      parcela_ideal: formData.monthlyPayment,
+      data_entrada: new Date().toISOString().split('T')[0],
+    };
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-to-crm`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }
-      );
+    // Navega IMEDIATAMENTE para página de obrigado
+    navigate("/obrigado");
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Erro na resposta:", errorData);
-        throw new Error("Erro ao enviar simulação");
+    // Envia em background (fire-and-forget)
+    fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-to-crm`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true,
       }
-
-      const data = await response.json();
-
-      navigate("/obrigado");
-    } catch (error) {
-      console.error("Erro na submissão:", error);
-      toast({
-        title: "Erro ao enviar simulação",
-        description: "Por favor, tente novamente.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-    }
+    ).catch((error) => {
+      console.error("Erro ao enviar lead:", error);
+    });
   };
 
   const renderStep = () => {
