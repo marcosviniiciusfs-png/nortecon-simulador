@@ -1,71 +1,45 @@
 
-# Plano: Acelerar o Envio do Formulário
+# Plano: Envio Duplo para CRM Convex + Webhook Make
 
-## Análise do Fluxo Atual
+## Objetivo
 
-Quando o usuário clica em "Finalizar", o seguinte acontece **sequencialmente**:
-
-1. `setIsSubmitting(true)` - Desabilita o botão
-2. Monta o payload com os dados
-3. `await fetch()` - Envia para Edge Function (espera resposta)
-4. Edge Function envia para Convex CRM (espera resposta)
-5. `await response.json()` - Lê a resposta
-6. `navigate("/obrigado")` - Redireciona
-
-**Problema:** O usuário fica esperando **toda a cadeia** (Frontend → Edge Function → CRM → resposta) antes de ver a página de obrigado.
+Adicionar um segundo envio de dados para o webhook do Make.com, mantendo o envio existente para o Convex CRM. Ambos serão executados em paralelo, em background, após a navegação para a página de obrigado.
 
 ---
 
-## Estratégias de Otimização
+## Estrutura do Payload para Make.com
 
-### 1. Navegação Otimista (Impacto Alto)
-Redirecionar imediatamente para `/obrigado` sem esperar a resposta da API.
+Conforme solicitado, o JSON será formatado assim:
 
-**Antes:**
-```typescript
-const response = await fetch(...);
-const data = await response.json();
-navigate("/obrigado");
+```json
+{
+  "Data de Entrada": "2026-01-26",
+  "Nome Completo": "João Silva",
+  "WhatsApp": "(11) 99999-9999",
+  "Tipo de Bem": "Imóvel",
+  "Valor Pretendido (R$)": "R$ 500.000,00",
+  "Valor de Entrada (R$)": "R$ 50.000,00",
+  "Parcela Ideal (R$)": "R$ 2.500,00",
+  "Cidade": "São Paulo"
+}
 ```
-
-**Depois:**
-```typescript
-// Navega primeiro (experiência instantânea)
-navigate("/obrigado");
-
-// Envia em background (fire-and-forget)
-fetch(...).catch(console.error);
-```
-
-### 2. Usar `navigator.sendBeacon` (Impacto Médio)
-API otimizada para envio de dados ao sair da página - não bloqueia navegação.
-
-```typescript
-navigator.sendBeacon(
-  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-to-crm`,
-  JSON.stringify(payload)
-);
-navigate("/obrigado");
-```
-
-### 3. Remover Leitura Desnecessária da Resposta (Impacto Baixo)
-O código atual faz `await response.json()` mas não usa o resultado. Remover isso economiza tempo.
 
 ---
 
-## Solução Recomendada
+## Mudanças no Código
 
-Combinar **Navegação Otimista** com **Fire-and-Forget** usando fetch normal (sendBeacon tem limitações com headers customizados).
+### Arquivo: `src/components/Simulator.tsx`
 
-### Mudanças no `handleFinish`:
+Modificar a função `handleFinish` para enviar para ambos os destinos:
 
 ```typescript
-const handleFinish = async () => {
+const handleFinish = () => {
   if (isSubmitting) return;
   
   setIsSubmitting(true);
   
-  const payload = {
+  // Payload para Convex CRM (mantém formato existente)
+  const payloadCRM = {
     nome: formData.fullName,
     nome_completo: formData.fullName,
     telefone: formData.whatsapp,
@@ -78,38 +52,52 @@ const handleFinish = async () => {
     data_entrada: new Date().toISOString().split('T')[0],
   };
 
+  // Payload para Make.com (formato solicitado)
+  const payloadMake = {
+    "Data de Entrada": new Date().toISOString().split('T')[0],
+    "Nome Completo": formData.fullName,
+    "WhatsApp": formData.whatsapp,
+    "Tipo de Bem": formData.propertyType,
+    "Valor Pretendido (R$)": formData.creditAmount,
+    "Valor de Entrada (R$)": formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
+    "Parcela Ideal (R$)": formData.monthlyPayment,
+    "Cidade": formData.city,
+  };
+
   // Navega IMEDIATAMENTE para página de obrigado
   navigate("/obrigado");
 
-  // Envia em background (fire-and-forget)
+  // Envia para Convex CRM (via Edge Function)
   fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-to-crm`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      keepalive: true, // Garante que o fetch continue mesmo após navegação
+      body: JSON.stringify(payloadCRM),
+      keepalive: true,
     }
   ).catch((error) => {
-    console.error("Erro ao enviar lead:", error);
+    console.error("Erro ao enviar para CRM:", error);
+  });
+
+  // Envia para Make.com (direto do frontend)
+  fetch(
+    'https://hook.us2.make.com/2efqpinw0psfqi0astfgfdcchdwtlwug',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payloadMake),
+      keepalive: true,
+    }
+  ).catch((error) => {
+    console.error("Erro ao enviar para Make:", error);
   });
 };
 ```
 
 ---
 
-## Benefícios
-
-| Aspecto | Antes | Depois |
-|---------|-------|--------|
-| Tempo até redirecionamento | 2-5 segundos | Instantâneo |
-| Experiência do usuário | Aguarda "Enviando..." | Imediato |
-| Dados são enviados? | Sim | Sim (em background) |
-| Risco | Nenhum | Mínimo (se falhar, usuário não vê erro) |
-
----
-
-## Fluxo Otimizado
+## Fluxo de Dados
 
 ```text
 Usuário clica "Finalizar"
@@ -118,17 +106,39 @@ Usuário clica "Finalizar"
         │         ↓
         │    Usuário vê página de sucesso
         │
-        └──→ [BACKGROUND] fetch() → Edge Function → CRM
-                    (não bloqueia navegação)
+        ├──→ [BACKGROUND] fetch() → Edge Function → Convex CRM
+        │                    (payload formato CRM)
+        │
+        └──→ [BACKGROUND] fetch() → Make.com Webhook
+                             (payload formato Make)
 ```
 
 ---
 
-## Considerações
+## Mapeamento de Campos
 
-- **keepalive: true**: Garante que a requisição continue mesmo que o componente desmonte
-- **Sem tratamento de erro para usuário**: Se falhar, o lead não será registrado mas o usuário não verá erro. Isso é aceitável para landing pages de conversão onde a velocidade é prioridade
-- **Meta Pixel**: O evento de Lead continua funcionando na página ThankYou
+| Campo do Formulário | Convex CRM | Make.com |
+|---------------------|------------|----------|
+| Nome Completo | `nome` / `nome_completo` | `Nome Completo` |
+| WhatsApp | `whatsapp` / `telefone` | `WhatsApp` |
+| Tipo de Bem | `tipo` | `Tipo de Bem` |
+| Valor do Crédito | `valor_do_credito` | `Valor Pretendido (R$)` |
+| Valor de Entrada | `valor_de_entrada` | `Valor de Entrada (R$)` |
+| Parcela Mensal | `parcela_ideal` | `Parcela Ideal (R$)` |
+| Cidade | `cidade` | `Cidade` |
+| Data | `data_entrada` | `Data de Entrada` |
+
+---
+
+## Considerações de Segurança
+
+O webhook do Make.com será chamado **diretamente do frontend**. Isso é seguro porque:
+
+1. **Webhooks Make são públicos por design** - não precisam de autenticação
+2. **A URL já está exposta** na mensagem do usuário
+3. **Não há tokens secretos** envolvidos nesta chamada
+
+Se no futuro precisar adicionar autenticação ao Make, podemos criar uma segunda Edge Function.
 
 ---
 
@@ -136,10 +146,13 @@ Usuário clica "Finalizar"
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/Simulator.tsx` | Refatorar `handleFinish` para navegação otimista |
+| `src/components/Simulator.tsx` | Adicionar segundo fetch para Make.com |
 
 ---
 
-## Detalhes Técnicos
+## Benefícios
 
-A opção `keepalive: true` no fetch é crucial. Sem ela, quando o React navega para `/obrigado`, o componente Simulator desmonta e o fetch poderia ser cancelado. Com `keepalive`, o navegador mantém a conexão ativa mesmo após a navegação.
+- **Simultaneidade**: Ambos os envios acontecem em paralelo
+- **Velocidade**: Usuário não espera nenhuma resposta
+- **Independência**: Se um falhar, o outro continua funcionando
+- **Formato correto**: Cada destino recebe os dados no formato esperado
