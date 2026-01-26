@@ -1,97 +1,95 @@
 
-# Plano: Integração do Simulador com Convex CRM
+# Plano: Chamar Edge Function Diretamente (Sem Supabase Client)
 
-## Visão Geral
-Integrar o formulário de simulação existente com o Convex CRM de forma segura usando Edge Functions do Supabase, substituindo a integração atual com Make.com.
+## Problema Identificado
+O projeto tem "Lovable Cloud habilitado" mas apenas no nível de permissões - o backend completo (Database/Users/Storage) não está provisionado. Por isso, as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` não são injetadas automaticamente, causando o erro `supabaseUrl is required` quando o cliente Supabase tenta inicializar.
 
-## Arquivos a Criar
+## Solução
+Remover a dependência do cliente Supabase no frontend e chamar a Edge Function diretamente via `fetch()`. Isso é possível porque:
+1. A Edge Function já está configurada com `verify_jwt = false`
+2. O endpoint da Edge Function está acessível publicamente
+3. Não há necessidade de autenticação do usuário para enviar leads
 
-### 1. Edge Function `send-to-crm`
-**Arquivo:** `supabase/functions/send-to-crm/index.ts`
+## Alterações Necessárias
 
-Funcionalidades:
-- Receber dados do formulário via POST
-- Adicionar headers CORS obrigatórios
-- Fazer requisição ao webhook do Convex CRM
-- Usar token de autenticação armazenado como secret
-- Retornar status de sucesso/erro
-
-### 2. Configuração da Edge Function
-**Arquivo:** `supabase/config.toml` (atualizar)
-
-Adicionar configuração para desabilitar verificação JWT (necessário para chamadas públicas do frontend).
-
-## Arquivos a Modificar
-
-### 3. Componente Simulator
+### 1. Remover Cliente Supabase do Simulator
 **Arquivo:** `src/components/Simulator.tsx`
 
-Alterações:
-- Substituir chamada direta ao Make.com por `supabase.functions.invoke('send-to-crm')`
-- Mapear campos do formulário para o formato esperado pelo CRM
-- Manter comportamento de redirecionamento após sucesso
+Mudanças:
+- Remover import do `supabase` client
+- Substituir `supabase.functions.invoke()` por `fetch()` direto
+- Usar a URL completa da Edge Function do projeto
 
-### 4. Cliente Supabase
-**Arquivo:** `src/integrations/supabase/client.ts` (criar se necessário)
+### 2. Opcionalmente Limpar Cliente Supabase
+**Arquivo:** `src/integrations/supabase/client.ts`
 
-Configurar cliente Supabase para invocar Edge Functions.
+Opção: Manter o arquivo mas adicionar verificação lazy, ou simplesmente não importá-lo onde não é usado.
 
-## Mapeamento de Campos
+## Código da Mudança Principal
 
-| Campo do Formulário | Campo do CRM |
-|---------------------|--------------|
-| fullName | nome, nome_completo |
-| whatsapp | telefone, whatsapp |
-| propertyType | tipo |
-| creditAmount | valor_do_credito |
-| downPaymentAmount | valor_de_entrada |
-| city | cidade |
-| monthlyPayment | parcela_ideal |
+O `handleFinish` no Simulator passará de:
 
-## Secret Necessário
-Será solicitado ao usuário adicionar o secret `CONVEX_CRM_TOKEN` com o token de autenticação do Convex CRM.
+```typescript
+import { supabase } from "@/integrations/supabase/client";
+// ...
+const { data, error } = await supabase.functions.invoke('send-to-crm', {
+  body: payload,
+});
+```
+
+Para:
+
+```typescript
+// Sem import do supabase client
+// ...
+const response = await fetch(
+  'https://43ecbb0e-055a-404a-920e-866debe2c8d3.supabase.co/functions/v1/send-to-crm',
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }
+);
+
+if (!response.ok) {
+  throw new Error('Erro ao enviar simulação');
+}
+
+const data = await response.json();
+```
+
+## Fluxo Atualizado
+
+```text
++--------------+      +---------------------------+      +-------------+
+|  Simulator   | ---> | Edge Function             | ---> | Convex CRM  |
+|  (Frontend)  |      | send-to-crm               |      | Webhook     |
++--------------+      +---------------------------+      +-------------+
+       |                       |                               |
+       | fetch() direto        | POST + Bearer Token           |
+       | (sem Supabase client) | (usa CONVEX_CRM_TOKEN)        |
+       v                       v                               v
+   Dados do form         Processa + Envia             Cria lead no CRM
+```
+
+## Benefícios
+- Elimina completamente a dependência de variáveis de ambiente no frontend
+- A Edge Function continua segura (token armazenado como secret)
+- Funciona mesmo sem backend completo do Lovable Cloud provisionado
+- Sem necessidade de configuração adicional
+
+## Arquivos Afetados
+1. `src/components/Simulator.tsx` - Modificar handleFinish
+2. `src/integrations/supabase/client.ts` - Pode ser mantido para uso futuro (opcional)
 
 ## Detalhes Técnicos
 
-### Estrutura da Edge Function
-```text
-supabase/
-└── functions/
-    └── send-to-crm/
-        └── index.ts
-```
+### URL da Edge Function
+A URL base do projeto Supabase é derivada do ID do projeto:
+`https://43ecbb0e-055a-404a-920e-866debe2c8d3.supabase.co/functions/v1/send-to-crm`
 
-### Headers CORS
-```text
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Headers: authorization, x-client-info, apikey, content-type, 
-                              x-supabase-client-platform, x-supabase-client-version, 
-                              x-supabase-client-info
-```
+### CORS
+A Edge Function já está configurada com headers CORS adequados, então a chamada fetch do frontend funcionará sem problemas.
 
-### Fluxo de Dados
-```text
-┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
-│  Simulator  │ ──► │  Edge Function   │ ──► │ Convex CRM  │
-│  (Frontend) │     │  send-to-crm     │     │  Webhook    │
-└─────────────┘     └──────────────────┘     └─────────────┘
-       │                     │                      │
-       │  supabase.functions │  POST + Bearer Token │
-       │  .invoke()          │                      │
-       ▼                     ▼                      ▼
-   Dados do form      Processa + Envia      Cria lead no CRM
-```
-
-## Ordem de Implementação
-1. Solicitar adição do secret `CONVEX_CRM_TOKEN`
-2. Criar/atualizar `supabase/config.toml`
-3. Criar Edge Function `send-to-crm/index.ts`
-4. Criar cliente Supabase se não existir
-5. Atualizar `Simulator.tsx` para usar Edge Function
-6. Testar integração completa
-
-## Benefícios da Abordagem
-- **Segurança**: Token de API nunca exposto no frontend
-- **Manutenção**: Fácil atualizar endpoint ou lógica sem alterar frontend
-- **Logs**: Possibilidade de monitorar chamadas via logs do Supabase
-- **Fallback**: Pode manter integração Make.com como backup se necessário
+### Tratamento de Erros
+Verificar `response.ok` e consumir o body com `response.json()` para tratamento adequado.
