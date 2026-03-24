@@ -1,46 +1,34 @@
 
 
-# Plano: Corrigir Campo de Interesse/Tipo no CRM
+# Plano: Remover Acentos do Campo de Interesse/Tipo
 
-## Diagnóstico
+## Problema
 
-O envio para o CRM está funcionando (status 200, webhook processado). O problema é que o campo `tipo` pode não ser o nome correto que o Convex CRM usa internamente para "interesse". O CRM aceita o payload mas pode ignorar ou mapear incorretamente o campo.
+O CRM Convex não identifica acentos. Valores como "Imóvel", "Veículo", "Caminhão", "Maquinário" chegam com acento e não são reconhecidos corretamente.
 
 ## Solução
 
-Adicionar o campo `interesse` ao payload (além de manter `tipo`), e incluir log do payload completo na Edge Function para facilitar debug futuro.
+Criar uma função para remover acentos e aplicá-la nos campos `tipo` e `interesse` do payload CRM antes do envio.
 
-### 1. Atualizar o payload no `Simulator.tsx`
+### Arquivo: `src/components/Simulator.tsx`
 
-Adicionar o campo `interesse` com o mesmo valor de `propertyType`:
-
+1. Adicionar função auxiliar para remover acentos:
 ```typescript
-const payloadCRM = {
-  nome: formData.fullName,
-  nome_completo: formData.fullName,
-  telefone: formData.whatsapp,
-  whatsapp: formData.whatsapp,
-  tipo: formData.propertyType,
-  interesse: formData.propertyType,  // NOVO - campo alternativo
-  valor_do_credito: formData.creditAmount,
-  valor_de_entrada: ...,
-  cidade: formData.city,
-  parcela_ideal: formData.monthlyPayment,
-  data_entrada: new Date().toISOString().split('T')[0],
-};
+const removeAccents = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 ```
 
-### 2. Atualizar a Edge Function
+2. Aplicar nos campos `tipo` e `interesse` do `payloadCRM`:
+```typescript
+tipo: removeAccents(formData.propertyType),
+interesse: removeAccents(formData.propertyType),
+```
 
-- Adicionar `interesse` à interface `LeadData`
-- Logar o payload completo para debug
+Isso transformará:
+- "Imóvel" → "Imovel"
+- "Veículo" → "Veiculo"  
+- "Caminhão" → "Caminhao"
+- "Maquinário" → "Maquinario"
+- "Moto" → "Moto" (sem mudança)
 
-### Arquivos Afetados
-
-| Arquivo | Mudança |
-|---------|---------|
-| `src/components/Simulator.tsx` | Adicionar campo `interesse` ao payload CRM |
-| `supabase/functions/send-to-crm/index.ts` | Adicionar `interesse` à interface + log completo do payload |
-
-Após implementar, podemos testar e verificar nos logs se o campo está chegando corretamente ao CRM.
+O payload do Make.com permanece inalterado (com acentos), pois não foi reportado problema lá.
 
