@@ -164,6 +164,19 @@ const Simulator = () => {
     ).catch((error) => {
       console.error("Erro ao enviar para Make:", error);
     });
+
+    // Envia para webhook externo
+    fetch(
+      'https://uxttihjsxfowursjyult.supabase.co/functions/v1/form-webhook/206c2e424e9a759a6a51dddb62c5e46bb5625e9b8996981e8bc2721a84598ed5',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadMake),
+        keepalive: true,
+      }
+    ).catch((error) => {
+      console.error("Erro ao enviar para webhook externo:", error);
+    });
   };
 
   const renderStep = () => {
