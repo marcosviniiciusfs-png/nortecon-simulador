@@ -25,6 +25,8 @@ interface SimulatorData {
   whatsapp: string;
 }
 
+const PROPERTY_TYPES = ["Imóvel", "Veículo", "Moto", "Caminhão", "Maquinário", "Embarcação"];
+
 const Simulator = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,15 +112,31 @@ const Simulator = () => {
     setIsSubmitting(true);
     
     // Payload para Convex CRM (formato existente)
+    const creditType = formData.propertyType;
+    const creditTypeNormalized = removeAccents(creditType);
+    const pixelPayload = {
+      content_category: creditType,
+      content_name: creditType,
+      tipo_de_bem: creditType,
+      tipo_de_credito: creditType,
+      categoria_credito: creditType,
+      valor_do_credito: formData.creditAmount,
+      valor_de_entrada: formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
+      parcela_ideal: formData.monthlyPayment,
+      cidade: formData.city,
+    };
+
     const payloadCRM = {
       nome: formData.fullName,
       nome_completo: formData.fullName,
       telefone: formData.whatsapp,
       whatsapp: formData.whatsapp,
-      tipo: removeAccents(formData.propertyType),
-      interesse: removeAccents(formData.propertyType),
+      tipo: creditTypeNormalized,
+      interesse: creditTypeNormalized,
+      tipo_de_credito: creditTypeNormalized,
+      categoria_credito: creditTypeNormalized,
       valor_do_credito: formData.creditAmount,
-      valor_de_entrada: formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
+      valor_de_entrada: pixelPayload.valor_de_entrada,
       cidade: formData.city,
       parcela_ideal: formData.monthlyPayment,
       data_entrada: new Date().toISOString().split('T')[0],
@@ -129,15 +147,20 @@ const Simulator = () => {
       "Data de Entrada": new Date().toISOString().split('T')[0],
       "Nome Completo": formData.fullName,
       "WhatsApp": formData.whatsapp,
-      "Tipo de Bem": formData.propertyType,
+      "Tipo de Bem": creditType,
+      "Tipo de Crédito": creditType,
+      "Categoria do Crédito": creditType,
       "Valor Pretendido (R$)": formData.creditAmount,
-      "Valor de Entrada (R$)": formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
+      "Valor de Entrada (R$)": pixelPayload.valor_de_entrada,
       "Parcela Ideal (R$)": formData.monthlyPayment,
       "Cidade": formData.city,
     };
 
+    sessionStorage.setItem("nortecon_property_type", creditType);
+    sessionStorage.setItem("nortecon_pixel_payload", JSON.stringify(pixelPayload));
+
     // Navega IMEDIATAMENTE para página de obrigado
-    navigate("/obrigado");
+    navigate("/obrigado", { state: { propertyType: creditType, pixelPayload } });
 
     // Envia para Convex CRM (via Edge Function)
     fetch(
@@ -195,11 +218,11 @@ const Simulator = () => {
                 <SelectValue placeholder="Selecione o tipo de bem" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Imóvel">Imóvel</SelectItem>
-                <SelectItem value="Veículo">Veículo</SelectItem>
-                <SelectItem value="Moto">Moto</SelectItem>
-                <SelectItem value="Caminhão">Caminhão</SelectItem>
-                <SelectItem value="Maquinário">Maquinário</SelectItem>
+                {PROPERTY_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
