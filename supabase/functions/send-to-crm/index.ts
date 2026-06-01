@@ -10,6 +10,8 @@ interface LeadData {
   whatsapp: string;
   tipo: string;
   interesse: string;
+  tipo_de_credito: string;
+  categoria_credito: string;
   valor_do_credito: string;
   valor_de_entrada: string;
   cidade: string;
