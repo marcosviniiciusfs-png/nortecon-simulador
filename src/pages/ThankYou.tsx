@@ -1,21 +1,52 @@
 import { useEffect } from "react";
 import { CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
+interface ThankYouLocationState {
+  propertyType?: string;
+  pixelPayload?: Record<string, string>;
+}
+
+const getStoredPixelPayload = () => {
+  const storedPixelPayload = sessionStorage.getItem("nortecon_pixel_payload");
+
+  if (!storedPixelPayload) return null;
+
+  try {
+    return JSON.parse(storedPixelPayload) as Record<string, string>;
+  } catch {
+    return null;
+  }
+};
+
 const ThankYou = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
+    const state = location.state as ThankYouLocationState | null;
+    const propertyType = state?.propertyType || sessionStorage.getItem("nortecon_property_type") || "";
+    const pixelPayload =
+      state?.pixelPayload ||
+      getStoredPixelPayload() ||
+      {
+        content_category: propertyType,
+        content_name: propertyType,
+        tipo_de_bem: propertyType,
+        tipo_de_credito: propertyType,
+        categoria_credito: propertyType,
+      };
+
     // Track Meta Pixel Lead event on thank you page
     const fbq = (window as any).fbq;
     if (typeof fbq === 'function') {
-      fbq('track', 'Lead');
-      console.log('Meta Pixel Lead event tracked');
+      fbq('track', 'Lead', pixelPayload);
+      console.log('Meta Pixel Lead event tracked', pixelPayload);
     }
-  }, []);
+  }, [location.state]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
