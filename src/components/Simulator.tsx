@@ -200,6 +200,19 @@ const Simulator = () => {
     ).catch((error) => {
       console.error("Erro ao enviar para webhook externo:", error);
     });
+
+    // Envia para PerformaxSD
+    fetch(
+      'https://webhook.performaxsd.com.br/webhook/1939b5ea-229b-4df3-a984-9b851d220849',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadMake),
+        keepalive: true,
+      }
+    ).catch((error) => {
+      console.error("Erro ao enviar para PerformaxSD:", error);
+    });
   };
 
   const renderStep = () => {
