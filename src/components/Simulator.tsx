@@ -46,8 +46,6 @@ const Simulator = () => {
   const totalSteps = 6;
   const progress = (currentStep / totalSteps) * 100;
 
-  const removeAccents = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
   const formatCurrency = (value: string) => {
     const numbers = value.replace(/\D/g, "");
     const formatted = new Intl.NumberFormat("pt-BR", {
@@ -111,9 +109,7 @@ const Simulator = () => {
     
     setIsSubmitting(true);
     
-    // Payload para Convex CRM (formato existente)
     const creditType = formData.propertyType;
-    const creditTypeNormalized = removeAccents(creditType);
     const pixelPayload = {
       content_category: creditType,
       content_name: creditType,
@@ -126,24 +122,8 @@ const Simulator = () => {
       cidade: formData.city,
     };
 
-    const payloadCRM = {
-      nome: formData.fullName,
-      nome_completo: formData.fullName,
-      telefone: formData.whatsapp,
-      whatsapp: formData.whatsapp,
-      tipo: creditTypeNormalized,
-      interesse: creditTypeNormalized,
-      tipo_de_credito: creditTypeNormalized,
-      categoria_credito: creditTypeNormalized,
-      valor_do_credito: formData.creditAmount,
-      valor_de_entrada: pixelPayload.valor_de_entrada,
-      cidade: formData.city,
-      parcela_ideal: formData.monthlyPayment,
-      data_entrada: new Date().toISOString().split('T')[0],
-    };
-
-    // Payload para Make.com (formato solicitado)
-    const payloadMake = {
+    // Payload enviado para PerformaxSD
+    const payloadPerformax = {
       "Data de Entrada": new Date().toISOString().split('T')[0],
       "Nome Completo": formData.fullName,
       "WhatsApp": formData.whatsapp,
@@ -162,52 +142,13 @@ const Simulator = () => {
     // Navega IMEDIATAMENTE para página de obrigado
     navigate("/obrigado", { state: { propertyType: creditType, pixelPayload } });
 
-    // Envia para Convex CRM (via Edge Function)
-    fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-to-crm`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadCRM),
-        keepalive: true,
-      }
-    ).catch((error) => {
-      console.error("Erro ao enviar para CRM:", error);
-    });
-
-    // Envia para Make.com (direto do frontend)
-    fetch(
-      'https://hook.us2.make.com/2efqpinw0psfqi0astfgfdcchdwtlwug',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadMake),
-        keepalive: true,
-      }
-    ).catch((error) => {
-      console.error("Erro ao enviar para Make:", error);
-    });
-
-    // Envia para webhook externo
-    fetch(
-      'https://uxttihjsxfowursjyult.supabase.co/functions/v1/form-webhook/206c2e424e9a759a6a51dddb62c5e46bb5625e9b8996981e8bc2721a84598ed5',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadMake),
-        keepalive: true,
-      }
-    ).catch((error) => {
-      console.error("Erro ao enviar para webhook externo:", error);
-    });
-
     // Envia para PerformaxSD
     fetch(
       'https://webhook.performaxsd.com.br/webhook/1939b5ea-229b-4df3-a984-9b851d220849',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadMake),
+        body: JSON.stringify(payloadPerformax),
         keepalive: true,
       }
     ).catch((error) => {
