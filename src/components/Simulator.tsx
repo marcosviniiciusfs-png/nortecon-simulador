@@ -25,7 +25,57 @@ interface SimulatorData {
   whatsapp: string;
 }
 
+interface LeadWebhookDestination {
+  name: string;
+  url: string;
+  getHeaders?: () => Record<string, string>;
+}
+
 const PROPERTY_TYPES = ["Imóvel", "Veículo", "Moto", "Caminhão", "Maquinário", "Embarcação"];
+const NORTECON_CRM_API_KEY = import.meta.env.VITE_NORTECON_CRM_API_KEY;
+
+const LEAD_WEBHOOK_DESTINATIONS: LeadWebhookDestination[] = [
+  {
+    name: "PerformaxSD",
+    url: "https://webhook.performaxsd.com.br/webhook/1939b5ea-229b-4df3-a984-9b851d220849",
+  },
+  {
+    name: "CRM Nortecon",
+    url: "https://crm.nortecon.com.br/api/leads",
+    getHeaders: () => (NORTECON_CRM_API_KEY ? { "x-api-key": NORTECON_CRM_API_KEY } : {}),
+  },
+];
+
+const sendLeadToDestinations = (payload: Record<string, string>) => {
+  console.log("Lead registrado para envio", {
+    destinos: LEAD_WEBHOOK_DESTINATIONS.map(({ name }) => name),
+  });
+
+  LEAD_WEBHOOK_DESTINATIONS.forEach(({ name, url, getHeaders }) => {
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getHeaders?.(),
+      },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        console.log(`Lead enviado para ${name}`, {
+          destination: name,
+          status: response.status,
+        });
+      })
+      .catch((error) => {
+        console.error(`Erro ao enviar lead para ${name}:`, error);
+      });
+  });
+};
 
 const Simulator = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -122,8 +172,8 @@ const Simulator = () => {
       cidade: formData.city,
     };
 
-    // Payload enviado para PerformaxSD
-    const payloadPerformax = {
+    // Payload enviado para todos os destinos de lead.
+    const leadPayload = {
       "Data de Entrada": new Date().toISOString().split('T')[0],
       "Nome Completo": formData.fullName,
       "WhatsApp": formData.whatsapp,
@@ -142,18 +192,7 @@ const Simulator = () => {
     // Navega IMEDIATAMENTE para página de obrigado
     navigate("/obrigado", { state: { propertyType: creditType, pixelPayload } });
 
-    // Envia para PerformaxSD
-    fetch(
-      'https://webhook.performaxsd.com.br/webhook/1939b5ea-229b-4df3-a984-9b851d220849',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadPerformax),
-        keepalive: true,
-      }
-    ).catch((error) => {
-      console.error("Erro ao enviar para PerformaxSD:", error);
-    });
+    sendLeadToDestinations(leadPayload);
   };
 
   const renderStep = () => {
