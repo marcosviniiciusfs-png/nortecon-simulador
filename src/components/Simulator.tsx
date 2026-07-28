@@ -36,10 +36,6 @@ const NORTECON_CRM_API_KEY = import.meta.env.VITE_NORTECON_CRM_API_KEY;
 
 const LEAD_WEBHOOK_DESTINATIONS: LeadWebhookDestination[] = [
   {
-    name: "PerformaxSD",
-    url: "https://webhook.performaxsd.com.br/webhook/1939b5ea-229b-4df3-a984-9b851d220849",
-  },
-  {
     name: "CRM Nortecon",
     url: "https://crm.nortecon.com.br/api/leads",
     getHeaders: () => (NORTECON_CRM_API_KEY ? { "x-api-key": NORTECON_CRM_API_KEY } : {}),
