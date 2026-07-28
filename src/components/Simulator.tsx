@@ -42,6 +42,8 @@ const LEAD_WEBHOOK_DESTINATIONS: LeadWebhookDestination[] = [
   },
 ];
 
+const removeAccents = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
 const sendLeadToDestinations = (payload: Record<string, string>) => {
   console.log("Lead registrado para envio", {
     destinos: LEAD_WEBHOOK_DESTINATIONS.map(({ name }) => name),
@@ -156,6 +158,8 @@ const Simulator = () => {
     setIsSubmitting(true);
     
     const creditType = formData.propertyType;
+    const creditTypeNormalized = removeAccents(creditType);
+    const entryDate = new Date().toISOString().split('T')[0];
     const pixelPayload = {
       content_category: creditType,
       content_name: creditType,
@@ -170,7 +174,21 @@ const Simulator = () => {
 
     // Payload enviado para todos os destinos de lead.
     const leadPayload = {
-      "Data de Entrada": new Date().toISOString().split('T')[0],
+      nome: formData.fullName,
+      nome_completo: formData.fullName,
+      telefone: formData.whatsapp,
+      whatsapp: formData.whatsapp,
+      tipo: creditTypeNormalized,
+      interesse: creditTypeNormalized,
+      tipo_de_credito: creditTypeNormalized,
+      categoria_credito: creditTypeNormalized,
+      tipo_de_bem: creditTypeNormalized,
+      valor_do_credito: formData.creditAmount,
+      valor_de_entrada: pixelPayload.valor_de_entrada,
+      parcela_ideal: formData.monthlyPayment,
+      cidade: formData.city,
+      data_entrada: entryDate,
+      "Data de Entrada": entryDate,
       "Nome Completo": formData.fullName,
       "WhatsApp": formData.whatsapp,
       "Tipo de Bem": creditType,
