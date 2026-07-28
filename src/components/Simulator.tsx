@@ -43,6 +43,17 @@ const LEAD_WEBHOOK_DESTINATIONS: LeadWebhookDestination[] = [
 ];
 
 const removeAccents = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
+const formatCurrencyForCrm = (value: string) => {
+  const cents = onlyDigits(value);
+
+  if (!cents) return "0";
+
+  const amount = Number(cents) / 100;
+
+  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+};
 
 const sendLeadToDestinations = (payload: Record<string, string>) => {
   console.log("Lead registrado para envio", {
@@ -160,6 +171,8 @@ const Simulator = () => {
     const creditType = formData.propertyType;
     const creditTypeNormalized = removeAccents(creditType);
     const entryDate = new Date().toISOString().split('T')[0];
+    const downPayment = formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount;
+    const phoneDigits = onlyDigits(formData.whatsapp);
     const pixelPayload = {
       content_category: creditType,
       content_name: creditType,
@@ -167,7 +180,7 @@ const Simulator = () => {
       tipo_de_credito: creditType,
       categoria_credito: creditType,
       valor_do_credito: formData.creditAmount,
-      valor_de_entrada: formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount,
+      valor_de_entrada: downPayment,
       parcela_ideal: formData.monthlyPayment,
       cidade: formData.city,
     };
@@ -176,8 +189,12 @@ const Simulator = () => {
     const leadPayload = {
       nome: formData.fullName,
       nome_completo: formData.fullName,
-      telefone: formData.whatsapp,
-      whatsapp: formData.whatsapp,
+      telefone: phoneDigits,
+      whatsapp: phoneDigits,
+      bem: creditType,
+      valor_credito: formatCurrencyForCrm(formData.creditAmount),
+      entrada: formatCurrencyForCrm(downPayment),
+      parcela: formatCurrencyForCrm(formData.monthlyPayment),
       tipo: creditTypeNormalized,
       interesse: creditTypeNormalized,
       tipo_de_credito: creditTypeNormalized,
