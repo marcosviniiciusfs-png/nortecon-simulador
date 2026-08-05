@@ -161,9 +161,18 @@ const getCustomData = (
   );
 };
 
-export const onRequestOptions = () => new Response(null, { headers: corsHeaders });
+const methodNotAllowed = () =>
+  jsonResponse(
+    { ok: false, error: "method_not_allowed" },
+    {
+      headers: {
+        Allow: "POST, OPTIONS",
+      },
+      status: 405,
+    },
+  );
 
-export const onRequestPost = async ({ request, env }: PagesContext) => {
+const handlePost = async ({ request, env }: PagesContext) => {
   const accessToken = env.META_CONVERSIONS_ACCESS_TOKEN;
   const pixelId = env.META_PIXEL_ID || DEFAULT_META_PIXEL_ID;
   const graphApiVersion = env.META_GRAPH_API_VERSION || DEFAULT_GRAPH_API_VERSION;
@@ -271,4 +280,16 @@ export const onRequestPost = async ({ request, env }: PagesContext) => {
   }
 
   return jsonResponse({ ok: true, meta: metaResponseBody });
+};
+
+export const onRequest = (context: PagesContext) => {
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  if (context.request.method === "POST") {
+    return handlePost(context);
+  }
+
+  return methodNotAllowed();
 };
