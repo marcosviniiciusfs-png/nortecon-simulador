@@ -5,8 +5,15 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
+declare global {
+  interface Window {
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
 interface ThankYouLocationState {
   propertyType?: string;
+  metaEventId?: string;
   pixelPayload?: Record<string, string>;
 }
 
@@ -29,6 +36,7 @@ const ThankYou = () => {
   useEffect(() => {
     const state = location.state as ThankYouLocationState | null;
     const propertyType = state?.propertyType || sessionStorage.getItem("nortecon_property_type") || "";
+    const metaEventId = state?.metaEventId || sessionStorage.getItem("nortecon_meta_event_id") || "";
     const pixelPayload =
       state?.pixelPayload ||
       getStoredPixelPayload() ||
@@ -41,10 +49,18 @@ const ThankYou = () => {
       };
 
     // Track Meta Pixel Lead event on thank you page
-    const fbq = (window as any).fbq;
+    const fbq = window.fbq;
     if (typeof fbq === 'function') {
-      fbq('track', 'Lead', pixelPayload);
-      console.log('Meta Pixel Lead event tracked', pixelPayload);
+      if (metaEventId) {
+        fbq('track', 'Lead', pixelPayload, { eventID: metaEventId });
+      } else {
+        fbq('track', 'Lead', pixelPayload);
+      }
+
+      console.log('Meta Pixel Lead event tracked', {
+        eventId: metaEventId || undefined,
+        pixelPayload,
+      });
     }
   }, [location.state]);
 

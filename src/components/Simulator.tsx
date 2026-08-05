@@ -32,7 +32,15 @@ interface LeadWebhookDestination {
 }
 
 const PROPERTY_TYPES = ["Imóvel", "Veículo", "Moto", "Caminhão", "Maquinário", "Embarcação"];
+interface ConversionEventPayload {
+  eventId: string;
+  eventSourceUrl: string;
+  leadPayload: Record<string, string>;
+  pixelPayload: Record<string, string>;
+}
+
 const NORTECON_CRM_API_KEY = import.meta.env.VITE_NORTECON_CRM_API_KEY;
+const META_CONVERSIONS_ENDPOINT = "/api/conversions";
 
 const LEAD_WEBHOOK_DESTINATIONS: LeadWebhookDestination[] = [
   {
@@ -53,6 +61,15 @@ const formatCurrencyForCrm = (value: string) => {
   const amount = Number(cents) / 100;
 
   return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+};
+
+const createMetaEventId = () => {
+  const randomId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return `nortecon-lead-${randomId}`;
 };
 
 const sendLeadToDestinations = (payload: Record<string, string>) => {
@@ -84,6 +101,31 @@ const sendLeadToDestinations = (payload: Record<string, string>) => {
         console.error(`Erro ao enviar lead para ${name}:`, error);
       });
   });
+};
+
+const sendConversionEvent = (payload: ConversionEventPayload) => {
+  console.log("Conversao registrada para envio", { eventId: payload.eventId });
+
+  fetch(META_CONVERSIONS_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      console.log("Conversao enviada para Meta CAPI", {
+        status: response.status,
+      });
+    })
+    .catch((error) => {
+      console.error("Erro ao enviar conversao para Meta CAPI:", error);
+    });
 };
 
 const Simulator = () => {
@@ -173,6 +215,8 @@ const Simulator = () => {
     const entryDate = new Date().toISOString().split('T')[0];
     const downPayment = formData.hasDownPayment === "Não" ? "R$ 0,00" : formData.downPaymentAmount;
     const phoneDigits = onlyDigits(formData.whatsapp);
+    const metaEventId = createMetaEventId();
+    const metaEventSourceUrl = new URL("/obrigado", window.location.href).toString();
     const pixelPayload = {
       content_category: creditType,
       content_name: creditType,
@@ -219,11 +263,18 @@ const Simulator = () => {
 
     sessionStorage.setItem("nortecon_property_type", creditType);
     sessionStorage.setItem("nortecon_pixel_payload", JSON.stringify(pixelPayload));
+    sessionStorage.setItem("nortecon_meta_event_id", metaEventId);
 
     // Navega IMEDIATAMENTE para página de obrigado
-    navigate("/obrigado", { state: { propertyType: creditType, pixelPayload } });
+    navigate("/obrigado", { state: { propertyType: creditType, pixelPayload, metaEventId } });
 
     sendLeadToDestinations(leadPayload);
+    sendConversionEvent({
+      eventId: metaEventId,
+      eventSourceUrl: metaEventSourceUrl,
+      leadPayload,
+      pixelPayload,
+    });
   };
 
   const renderStep = () => {
